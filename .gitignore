@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 Data/
+submission.csv
+best_model.pkl
+catboost_info/
