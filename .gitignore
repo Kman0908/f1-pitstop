@@ -12,3 +12,5 @@ Data/
 submission.csv
 best_model.pkl
 catboost_info/
+logs/
+artifacts/
