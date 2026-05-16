@@ -14,3 +14,5 @@ best_model.pkl
 catboost_info/
 logs/
 artifacts/
+mlflow.db
+mlartifacts/
