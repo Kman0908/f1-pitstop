@@ -65,7 +65,7 @@ class DataTransformation:
 
         except Exception as e:
             logging.exception('Error occurred at Data Transformation')
-            raise CustomException(e, sys)
+            raise CustomException(str(e))
 
     def initiateTransformation(self, train_path, test_path):
         logging.info('Data Transformation Started')
@@ -93,8 +93,8 @@ class DataTransformation:
             y_train = train[target_col]
             y_test = test[target_col] 
 
-            preprocessor.fit_transform(X_train, y_train)
-            preprocessor.transform(X_test)
+            X_train = preprocessor.fit_transform(X_train, y_train)
+            X_test = preprocessor.transform(X_test)
 
             joblib.dump(preprocessor, self.data_transformation_obj.preprocessor_path)
             logging.info('Preprocessor saved')
@@ -106,7 +106,7 @@ class DataTransformation:
 
         except Exception as e:
             logging.exception('Error occurred at Data Transformation')
-            raise CustomException(e, sys)
+            raise CustomException(str(e))
     
     def _engineer_features(self, data):
         try:
@@ -137,4 +137,4 @@ class DataTransformation:
 
         except Exception as e:
             logging.exception('Error occurred at Data Transformation')
-            raise CustomException(e, sys)
+            raise CustomException(str(e))

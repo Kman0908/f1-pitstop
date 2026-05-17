@@ -41,4 +41,4 @@ class DataIngestion:
             )
         except Exception as e:
             logging.exception('Error occurred at data ingestion')
-            CustomException(e, sys)
+            raise CustomException(str(e))
