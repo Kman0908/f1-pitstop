@@ -45,3 +45,11 @@ def get_best_model(report: dict, metrics = 'accuracy'):
     except Exception as e:
         logging.exception('Error occurred at utils.get_best_model')
         raise CustomException(str(e))
+
+def load_obj(path: str):
+    try:
+        with open(path, 'rb') as f:
+            return pickle.load(f)
+    except Exception as e:
+        logging.exception('Error occurred at utils.load_obj')
+        raise CustomException(str(e))
