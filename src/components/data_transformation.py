@@ -1,6 +1,4 @@
 import os
-import sys
-import joblib
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
@@ -9,6 +7,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, TargetEncoder
 
+from src.utils import save_obj
 from src.logger import logging
 from src.exception import CustomException
 
@@ -27,38 +26,23 @@ class DataTransformation:
         try:
             feature_config = {
                 'num_cols': ['Year', 'PitStop', 'LapNumber', 'Stint', 'TyreLife', 'Position', 'LapTime (s)', 'LapTime_Delta', 'Cumulative_Degradation', 'RaceProgress', 'Position_Change', 'TyreLife_per_Stint', 'Tyre_Wear', 'Early_PitWindow', 'Mid_PitWindow', 'Late_PitWindow', 'IsLastStint', 'RollingMean_Laptime', 'LapTime_Trend'],
-
+                
                 'cat_cols': ['Driver', 'Compound', 'Race'],
-
-                'ordinal': {
-                'Compound': ['INTERMEDIATE', 'WET', 'SOFT', 'MEDIUM', 'HARD'],
-                'Position': list(range(1, 21))
-                }
             }
 
-            num_pipeline = Pipeline(steps = [
-                ('Impute', SimpleImputer(strategy = 'median')),
+            num_pipeline = Pipeline(steps=[
+                ('Impute', SimpleImputer(strategy='median')),
                 ('Scaling', StandardScaler())
             ])
 
-            ordinal_pipeline = Pipeline(steps = [
-                ('Impute', SimpleImputer(strategy = 'constant', fill_value = 'HARD')),
-                ('Encoder', OrdinalEncoder(
-                    categories = [feature_config['ordinal'][i] for i in feature_config['ordinal'].keys()],
-                    handle_unknown = 'use_encoded_value',
-                    unknown_value = -1)
-                )
+            cat_pipeline = Pipeline(steps=[
+                ('Impute', SimpleImputer(strategy='constant', fill_value='Unknown')),
+                ('Encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1))
             ])
 
-            target_pipeline = Pipeline(steps = [
-                ('Impute', SimpleImputer(strategy = 'constant', fill_value = 'Unknown')),
-                ('Encoder', TargetEncoder())
-            ])
-
-            preprocessor = ColumnTransformer(transformers = [
+            preprocessor = ColumnTransformer(transformers=[
                 ('Numerical Pipeline', num_pipeline, feature_config['num_cols']),
-                ('Ordinal Pipeline', ordinal_pipeline, list(feature_config['ordinal'].keys())),
-                ('Target Pipeline', target_pipeline, feature_config['cat_cols'])
+                ('Categorical Pipeline', cat_pipeline, feature_config['cat_cols'])
             ])
 
             return preprocessor
@@ -96,7 +80,7 @@ class DataTransformation:
             X_train = preprocessor.fit_transform(X_train, y_train)
             X_test = preprocessor.transform(X_test)
 
-            joblib.dump(preprocessor, self.data_transformation_obj.preprocessor_path)
+            save_obj(self.data_transformation_obj.preprocessor_path, preprocessor)
             logging.info('Preprocessor saved')
 
             train = np.c_[X_train, y_train]

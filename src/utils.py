@@ -1,18 +1,29 @@
 import os
 import sys
-import pickle
+import cloudpickle
 
 from src.logger import logging
 from src.exception import CustomException
 
 from sklearn.metrics import recall_score, f1_score, classification_report, accuracy_score, roc_auc_score
 
+import cloudpickle
+
 def save_obj(path, obj):
     try:
         with open(path, 'wb') as f:
-            pickle.dump(obj, f)
+            cloudpickle.dump(obj, f)
+        logging.info(f'Object saved to {path}')
     except Exception as e:
         logging.exception('Error occurred at utils.save_obj')
+        raise CustomException(str(e))
+
+def load_obj(path: str):
+    try:
+        with open(path, 'rb') as f:
+            return cloudpickle.load(f)
+    except Exception as e:
+        logging.exception('Error occurred at utils.load_obj')
         raise CustomException(str(e))
 
 def evaluate(X_train, X_test, y_train, y_test, models: dict):
@@ -44,12 +55,4 @@ def get_best_model(report: dict, metrics = 'accuracy'):
         return name, score
     except Exception as e:
         logging.exception('Error occurred at utils.get_best_model')
-        raise CustomException(str(e))
-
-def load_obj(path: str):
-    try:
-        with open(path, 'rb') as f:
-            return pickle.load(f)
-    except Exception as e:
-        logging.exception('Error occurred at utils.load_obj')
         raise CustomException(str(e))

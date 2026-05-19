@@ -12,8 +12,8 @@ class Predict:
         try:
             logging.info('Loading preprocessor')
 
-            preprocessor = load_obj(os.path.join(os.getcwd(), 'artifacts', 'objects', 'preprocessor.pkl'))
-            model = load_obj(os.path.join(os.getcwd(), 'artifacts', 'objects', 'model.pkl'))
+            preprocessor = load_obj(str(os.path.join('artifacts', 'objects', 'preprocessor.pkl')))
+            model = load_obj(str(os.path.join('artifacts', 'objects', 'model.pkl')))
 
             features_scaled = preprocessor.transform(features)
             prediction = model.predict(features_scaled)
