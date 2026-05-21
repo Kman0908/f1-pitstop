@@ -1,0 +1,68 @@
+FROM python:3.14-slim as builder
+
+WORKDIR /app
+
+# Install uv
+RUN pip install uv
+
+# Copy project files
+COPY pyproject.toml .
+COPY uv.lock .
+
+# Create virtual environment and sync exact versions from uv.lock
+# (production only - no dev dependencies)
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install --no-dev
+
+# ============= Production Stage =============
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Set environment
+ENV PATH="/opt/venv/bin:$PATH" \
+    VIRTUAL_ENV="/opt/venv" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Copy application code
+COPY frontend_app.py .
+
+# Create .streamlit directory and configuration
+RUN mkdir -p /home/appuser/.streamlit && \
+    echo "[server]\n\
+headless = true\n\
+port = 8501\n\
+enableXsrfProtection = false\n\
+enableCORS = false\n\
+[client]\n\
+showErrorDetails = false\n\
+" > /home/appuser/.streamlit/config.toml
+
+# Change ownership
+RUN chown -R appuser:appuser /app /home/appuser
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8501
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# Run Streamlit
+CMD ["streamlit", "run", "frontend_app.py", "--server.address=0.0.0.0", "--logger.level=info"]
