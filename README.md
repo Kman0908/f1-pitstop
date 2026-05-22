@@ -184,7 +184,7 @@ For complete setup, deployment, and API documentation, see the GitHub repository
 
 - **GitHub Repository:** [Kman0908/F1-PitStop](https://github.com/Kman0908/F1-PitStop)
 - **Backend API:** Runs on Render.com
-- **Frontend App:** Hosted on Hugging Face Spaces
+- **Frontend App:** Hosted on Render.com
 
 ---
 
@@ -193,7 +193,7 @@ For complete setup, deployment, and API documentation, see the GitHub repository
 - Formula 1 race telemetry dataset
 - scikit-learn, XGBoost, CatBoost libraries
 - FastAPI & Streamlit frameworks
-- Render & Hugging Face deployment platforms
+- Render deployment platforms
 
 ---
 
