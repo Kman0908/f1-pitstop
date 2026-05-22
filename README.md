@@ -5,8 +5,8 @@ colorFrom: purple
 colorTo: pink
 sdk: streamlit
 sdk_version: "1.28.1"
-python_version: "3.10"
-app_file: app.py
+python_version: "3.14"
+app_file: frontend_app.py
 pinned: false
 ---
 
