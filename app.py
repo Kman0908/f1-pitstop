@@ -1,18 +1,43 @@
 import streamlit as st
-import requests
+import os
 import pandas as pd
 from typing import Optional
 import time
+from src.utils import load_obj
 
-# Page config
+model = load_obj(os.path.join(os.getcwd(), 'artifacts', 'objects', 'model.pkl'))
+preporcessor = load_obj(os.path.join(os.getcwd(), 'artifacts', 'objects', 'preprocessor.pkl'))
+
 st.set_page_config(
-    page_title="F1-PitStop Predictor",
-    page_icon="🏎️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title = 'F1-PitStop',
+    page_icon = '🏎️',
+    layout = 'wide',
+    initial_sidebar_state = 'expanded'
 )
+def _engineer_features(data):
+    
+    data['TyreLife_per_Stint'] = data.apply(
+        lambda x: x['TyreLife'] / x['Stint'] if x['Stint'] != 0 else x['TyreLife'], axis = 1
+    )
 
-# Custom CSS
+    data['Tyre_Wear'] = data['TyreLife'] * data['Cumulative_Degradation']
+
+    data['Early_PitWindow'] = (data['RaceProgress'] < 0.3).astype(int)
+    data['Mid_PitWindow'] = ((data['RaceProgress'] >= 0.3 ) & (data['RaceProgress'] < 0.6)).astype(int)
+
+    data['Late_PitWindow'] = (data['RaceProgress'] > 0.6).astype(int)
+
+    data['IsLastStint'] = (data['Stint'] > 3).astype(int)
+
+    data = data.sort_values(['Driver', 'Race', 'Year', 'LapNumber'])
+
+    data['RollingMean_Laptime'] = (
+    data.groupby(['Driver', 'Year', 'Race'])['LapTime (s)'].transform(lambda x: x.rolling(3, min_periods = 1).mean())
+    )
+    data['LapTime_Trend'] = data['LapTime (s)'] - data['RollingMean_Laptime']
+
+    return data
+
 st.markdown("""
     <style>
     .main {
@@ -44,32 +69,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# API configuration
-API_URL = st.secrets.get("API_URL", "https://f1-pitstop-ealp.onrender.com")
-
-# Header
-st.title("🏎️ F1-PitStop Strategy Predictor")
+st.title('🏎️ F1-PitStop Strategy Predictor')
 st.markdown("**Predict optimal pit stop timing for Formula 1 races**")
 
-# Sidebar for API configuration
 with st.sidebar:
-    st.header("⚙️ Configuration")
-    api_url_input = st.text_input(
-        "API URL",
-        value=API_URL,
-        help="URL of the FastAPI backend"
-    )
-    
-    # Health check
-    try:
-        response = requests.get(f"{api_url_input}/health", timeout=2)
-        if response.status_code == 200:
-            st.success("✅ API Connected")
-        else:
-            st.error("❌ API Error")
-    except Exception as e:
-        st.error(f"❌ Cannot connect to API: {str(e)}")
-    
+    st.header('Details')
     st.markdown("---")
     st.markdown("""
     ### About
@@ -83,8 +87,6 @@ with st.sidebar:
     - Race progress
     """)
 
-
-# Main content - Two column layout
 col1, col2 = st.columns([1.5, 1], gap="large")
 
 with col1:
@@ -244,7 +246,6 @@ with col2:
         # Show spinner while loading
         with st.spinner("Analyzing race data..."):
             try:
-                # Prepare request data
                 payload = {
                     "Driver": driver,
                     "Compound": compound,
@@ -255,84 +256,64 @@ with col2:
                     "Stint": stint,
                     "TyreLife": tyre_life,
                     "Position": position,
-                    "LapTime_s": lap_time,
+                    "LapTime (s)": lap_time,
                     "LapTime_Delta": lap_time_delta,
                     "Cumulative_Degradation": cum_degradation,
                     "RaceProgress": race_progress,
                     "Position_Change": position_change
                 }
-                
-                # Make API request
-                response = requests.post(
-                    f"{api_url_input}/predict",
-                    json=payload,
-                    timeout=10
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Display prediction
-                    prediction = result["prediction"]
-                    label = result["prediction_label"]
-                    confidence = result["confidence_message"]
-                    
-                    if prediction == 1:
-                        st.markdown(
-                            f"""
-                            <div class="prediction-box-pit">
-                            ⚠️ {label} ⚠️<br>
-                            <small style="font-size: 0.7em; opacity: 0.9;">{confidence}</small>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        st.success("Strategy: ENTER PIT LANE")
-                    else:
-                        st.markdown(
-                            f"""
-                            <div class="prediction-box-no-pit">
-                            ✅ {label} ✅<br>
-                            <small style="font-size: 0.7em; opacity: 0.9;">{confidence}</small>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        st.info("Strategy: CONTINUE ON TRACK")
-                    
-                    # Show input summary
-                    st.markdown("---")
-                    st.subheader("📋 Input Summary")
-                    summary = result["input_summary"]
-                    col_summary1, col_summary2, col_summary3 = st.columns(3)
-                    with col_summary1:
-                        st.write("Driver", summary["driver"])
-                    with col_summary2:
-                        st.write("Year", summary["year"])
-                    with col_summary3:
-                        st.write("Position", summary["position"])
-                    
-                    col_summary4, col_summary5 = st.columns(2)
-                    with col_summary4:
-                        st.write("Race", summary["race"])
-                    with col_summary5:
-                        st.write("Lap", summary["lap_number"])
-                
+
+                input_df = pd.DataFrame([payload])
+                input_df = _engineer_features(input_df)
+                # apply preprocessing if your model expects it
+                input_transformed = preporcessor.transform(input_df)
+
+                prediction = model.predict(input_transformed)[0]
+
+                if hasattr(model, "predict_proba"):
+                    probability = model.predict_proba(input_transformed)[0]
+                    confidence = max(probability)
                 else:
-                    st.error(f"❌ Prediction failed: {response.text}")
-            
-            except requests.exceptions.ConnectionError:
-                st.error("❌ Cannot connect to API. Make sure the backend is running at: " + api_url_input)
-            except requests.exceptions.Timeout:
-                st.error("❌ Request timeout. The API took too long to respond.")
+                    confidence = None
+
+                label = "PIT NEXT LAP" if prediction == 1 else "STAY OUT"
+
+                confidence_msg = (
+                    f"Confidence: {confidence:.1%}"
+                    if confidence is not None
+                    else "Confidence unavailable"
+                )
+
+                if prediction == 1:
+                    st.markdown(
+                        f"""
+                        <div class="prediction-box-pit">
+                        ⚠️ {label} ⚠️<br>
+                        <small>{confidence_msg}</small>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(
+                        f"""
+                        <div class="prediction-box-no-pit">
+                        ✅ {label} ✅<br>
+                        <small>{confidence_msg}</small>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                st.markdown("---")
+                st.subheader("📋 Input Summary")
+
+                st.write("Driver:", driver)
+                st.write("Race:", race)
+                st.write("Year:", year)
+                st.write("Position:", position)
+                st.write("Lap:", lap_number)
+
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: gray; font-size: 0.8em;">
-    <p>🏎️ F1-PitStop Predictor v1.0 | Built with FastAPI + Streamlit | 🚀</p>
-    <p>Disclaimer: This is a demonstration tool. Always follow official pit stop procedures and team strategies.</p>
-</div>
-""", unsafe_allow_html=True)

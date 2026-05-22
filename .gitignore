@@ -18,3 +18,4 @@ mlartifacts/
 artifacts/*.csv
 mlruns/
 mlflow.db
+Pit-Stop/

@@ -42,8 +42,8 @@ dev = [
 ]
 
 [tool.uv]
-# Use Python 3.10 for builds
-python-version = "3.10"
+# Use Python 3.14 for builds
+python-version = "3.14"
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
@@ -54,7 +54,7 @@ line-length = 100
 target-version = ["py310"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
