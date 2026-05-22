@@ -3,7 +3,7 @@ name = "f1-pitstop"
 version = "1.0.0"
 description = "ML-powered F1 pit stop strategy prediction using FastAPI and Streamlit"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Kman", email = "kman@example.com" }
